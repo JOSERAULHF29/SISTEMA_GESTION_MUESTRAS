@@ -118,7 +118,7 @@ export function DetalleEnvioPage() {
         {getBackLabel()}
       </button>
 
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Detalle del envío</h1>
           <p className="mt-1 text-sm text-slate-400">Información completa del envío</p>
@@ -229,7 +229,7 @@ export function DetalleEnvioPage() {
         </p>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-4">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <button
           onClick={() => handleDownload(envio.archivo_path, envio.archivo_nombre)}
           className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 shadow-lg shadow-blue-600/20"

@@ -14,9 +14,10 @@ export function DashboardPage() {
   const isAsesor = profile?.rol === 'asesor'
   const isTribologoOrAdmin = profile?.rol === 'tribologo' || profile?.rol === 'admin'
   const isAlmacenero = profile?.rol === 'almacenero'
-  const { envios: enviosAlmacen, totalMuestras: muestrasAlmacen } = useEnviosAlmacen(
+  const { envios: enviosAlmacen } = useEnviosAlmacen(
     isAlmacenero ? profile?.email : undefined
   )
+  const muestrasAlmacen = enviosAlmacen.reduce((sum, e) => sum + e.cantidad_muestras, 0)
 
   const enviosRecientes = isAsesor ? misEnvios.slice(0, 5) : isAlmacenero ? enviosAlmacen.slice(0, 5) : allEnvios.slice(0, 5)
 
