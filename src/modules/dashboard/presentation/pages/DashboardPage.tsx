@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/shared/hooks/useAuth'
 import { useEnvios } from '@/shared/hooks/useEnvios'
 import { useAllEnvios } from '@/shared/hooks/useAllEnvios'
+import { useEnviosAlmacen } from '@/shared/hooks/useEnviosAlmacen'
 import { EstadoBadge } from '@/shared/components/EstadoBadge'
 import { Package, FileSpreadsheet, Plus, ArrowRight, Download } from 'lucide-react'
 
@@ -12,8 +13,12 @@ export function DashboardPage() {
 
   const isAsesor = profile?.rol === 'asesor'
   const isTribologoOrAdmin = profile?.rol === 'tribologo' || profile?.rol === 'admin'
+  const isAlmacenero = profile?.rol === 'almacenero'
+  const { envios: enviosAlmacen, totalMuestras: muestrasAlmacen } = useEnviosAlmacen(
+    isAlmacenero ? profile?.email : undefined
+  )
 
-  const enviosRecientes = isAsesor ? misEnvios.slice(0, 5) : allEnvios.slice(0, 5)
+  const enviosRecientes = isAsesor ? misEnvios.slice(0, 5) : isAlmacenero ? enviosAlmacen.slice(0, 5) : allEnvios.slice(0, 5)
 
   return (
     <div>
@@ -32,10 +37,10 @@ export function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-slate-400">
-                {isAsesor ? 'Mis envíos' : 'Total envíos'}
+                {isAsesor || isAlmacenero ? 'Mis envíos' : 'Total envíos'}
               </p>
               <p className="text-2xl font-bold text-white">
-                {isAsesor ? misEnvios.length : allEnvios.length}
+                {isAsesor ? misEnvios.length : isAlmacenero ? enviosAlmacen.length : allEnvios.length}
               </p>
             </div>
           </div>
@@ -48,10 +53,10 @@ export function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-slate-400">
-                {isAsesor ? 'Mis muestras' : 'Total muestras'}
+                {isAsesor || isAlmacenero ? 'Mis muestras' : 'Total muestras'}
               </p>
               <p className="text-2xl font-bold text-white">
-                {isAsesor ? totalMuestras : allMuestras}
+                {isAsesor ? totalMuestras : isAlmacenero ? muestrasAlmacen : allMuestras}
               </p>
             </div>
           </div>
@@ -81,7 +86,7 @@ export function DashboardPage() {
       <div className="rounded-xl border border-slate-700/50 bg-slate-800 p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">
-            {isAsesor ? 'Mis envíos recientes' : 'Envíos recientes'}
+            {isAsesor || isAlmacenero ? 'Mis envíos recientes' : 'Envíos recientes'}
           </h2>
           {(isAsesor || isTribologoOrAdmin) && (
             <Link
