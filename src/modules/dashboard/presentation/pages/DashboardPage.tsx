@@ -25,7 +25,7 @@ export function DashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">
-          Hola, {profile?.nombre}
+          Bienvenido al Sistema de Gestión de envíos de muestras
         </h1>
         <p className="text-sm text-slate-400">Bienvenido a SIGMA</p>
       </div>

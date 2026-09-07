@@ -17,6 +17,7 @@
 | ETAPA 11 — Flujo completo (almacenero + PDF) | Completada |
 | ETAPA 12 — Mostrar asesor + formato Excel | Completada |
 | ETAPA 13 — Deploy Vercel | **Pendiente** |
+| ETAPA 14 — Compartir por red (dev tunnels) | Completada |
 
 ---
 
@@ -101,7 +102,7 @@ El asesor puede descargar un formato Excel estático desde el Dashboard.
 | `src/shared/layouts/AppLayout.tsx` | Nav para almacenero |
 | `src/app/router/AppRouter.tsx` | Ruta `/app/almacen` |
 | `src/modules/auth/application/useCases/getRoleFromEmail.ts` | Lógica para almacenero |
-| `src/modules/dashboard/presentation/pages/DashboardPage.tsx` | Botón "Descargar formato Excel" |
+| `src/modules/dashboard/presentation/pages/DashboardPage.tsx` | Botón "Descargar formato Excel", mensaje de bienvenida simplificado |
 
 ### Trigger SQL (ejecutado en Supabase)
 
@@ -134,6 +135,69 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
+### RLS Policies — envios_muestras
+
+Políticas de Row Level Security para la tabla `envios_muestras`:
+
+```sql
+-- Eliminar políticas antiguas
+DROP POLICY IF EXISTS "Asesores pueden ver sus propios envios" ON envios_muestras;
+DROP POLICY IF EXISTS "Asesores pueden crear sus propios envios" ON envios_muestras;
+
+-- SELECT: Asesor ve sus propios envíos
+CREATE POLICY "Asesores ven sus propios envios"
+ON envios_muestras FOR SELECT TO authenticated
+USING (asesor_id = auth.uid());
+
+-- SELECT: Almacenero ve envíos de su correo
+CREATE POLICY "Almacenero ve envios de su almacen"
+ON envios_muestras FOR SELECT TO authenticated
+USING (correo_almacen = auth.email());
+
+-- SELECT: Admin y tribólogo ven todos los envíos
+CREATE POLICY "Admin y tribologo ven todos los envios"
+ON envios_muestras FOR SELECT TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.rol IN ('admin', 'tribologo')
+  )
+);
+
+-- INSERT: Asesor crea envíos con su ID
+CREATE POLICY "Asesores crean sus propios envios"
+ON envios_muestras FOR INSERT TO authenticated
+WITH CHECK (asesor_id = auth.uid());
+
+-- UPDATE: Almacenero confirma envíos de su correo
+CREATE POLICY "Almacenero confirma envios de su almacen"
+ON envios_muestras FOR UPDATE TO authenticated
+USING (correo_almacen = auth.email())
+WITH CHECK (correo_almacen = auth.email());
+
+-- UPDATE: Admin y tribólogo actualizan cualquier envío
+CREATE POLICY "Admin y tribologo actualizan envios"
+ON envios_muestras FOR UPDATE TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.rol IN ('admin', 'tribologo')
+  )
+);
+```
+
+### RLS Policies — profiles
+
+Política para que los usuarios autenticados puedan ver perfiles de otros (necesario para JOIN y mostrar nombre del asesor):
+
+```sql
+CREATE POLICY "Usuarios autenticados pueden ver todos los perfiles"
+ON profiles FOR SELECT TO authenticated
+USING (true);
+```
+
 ### SQL ejecutado en Supabase
 
 ```sql
@@ -153,6 +217,34 @@ ALTER TABLE envios_muestras
 
 -- Migrar estados existentes
 UPDATE envios_muestras SET estado = 'pendiente' WHERE estado = 'registrado';
+
+-- Actualizar perfiles existentes con nombre vacío (usar parte del email)
+UPDATE profiles
+SET nombre = SPLIT_PART(email, '@', 1)
+WHERE nombre = '' OR nombre IS NULL;
+```
+
+### Supabase URL Configuration (para dev tunnels)
+
+Para compartir la app por la red con VS Code dev tunnels:
+
+1. **Supabase Dashboard** → Authentication → URL Configuration:
+   - Site URL: `https://01c4bx0t-5173.brs.devtunnels.ms`
+   - Redirect URLs: agregar `https://01c4bx0t-5173.brs.devtunnels.ms/**`
+
+2. **Google Cloud Console** → APIs & Services → Credentials → OAuth Client ID:
+   - Verificar que esté: `https://limvvebxkvhibuobmpkx.supabase.co/auth/v1/callback`
+
+### Mensaje de bienvenida
+
+El saludo del Dashboard fue simplificado para evitar problemas con usuarios sin nombre:
+
+```tsx
+// Antes
+Hola, {profile?.nombre}
+
+// Ahora
+Bienvenido al Sistema de Gestión de envíos de muestras
 ```
 
 ### Código de respaldo (no conectado)
@@ -335,3 +427,6 @@ npm run lint         # Linting con oxlint
 
 - **Build:** ✅ Exitoso
 - **Tests:** ✅ 21/21 pasan
+- **RLS envios_muestras:** ✅ 6 políticas configuradas (asesor, almacenero, admin/tribólogo)
+- **RLS profiles:** ✅ Política de SELECT para todos los autenticados
+- **Compartir por red (tunnel):** ✅ Configurado para VS Code dev tunnels
