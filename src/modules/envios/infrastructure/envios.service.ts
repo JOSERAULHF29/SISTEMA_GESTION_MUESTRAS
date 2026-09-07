@@ -1,4 +1,6 @@
 import { supabase } from '@/infrastructure/supabase/client'
+import { sendEmail, templates } from '@/modules/email/infrastructure/email.service'
+import { ADMIN_EMAIL } from '@/shared/constants'
 import type { EnvioMuestra } from '@/shared/types'
 
 function mapEnvio(data: Record<string, unknown>): EnvioMuestra {
@@ -63,19 +65,47 @@ export async function createEnvio(
     .single()
 
   if (error) throw error
-  return mapEnvio(data)
+
+  const envioCreado = mapEnvio(data)
+  const fecha = new Date(envioCreado.fecha_envio).toLocaleDateString('es-PE')
+
+  sendEmail(
+    envioCreado.correo_almacen,
+    'Nuevo envío pendiente de confirmar - SIGMA',
+    templates.nuevoEnvio(envioCreado.sucursal, envioCreado.cantidad_muestras, fecha, envioCreado.asesor_email || 'No disponible')
+  )
+
+  return envioCreado
 }
 
 export async function updateEnvioEstado(
   id: string,
   estado: EnvioMuestra['estado']
 ): Promise<void> {
+  const envio = await getEnvioById(id)
+
   const { error } = await supabase
     .from('envios_muestras')
     .update({ estado, updated_at: new Date().toISOString() })
     .eq('id', id)
 
   if (error) throw error
+
+  if (envio && envio.asesor_email) {
+    if (estado === 'confirmado') {
+      sendEmail(
+        envio.asesor_email,
+        'Tu envío ha sido confirmado - SIGMA',
+        templates.envioConfirmado(envio.sucursal, envio.cantidad_muestras)
+      )
+    } else if (estado === 'anulado') {
+      sendEmail(
+        envio.asesor_email,
+        'Tu envío ha sido anulado - SIGMA',
+        templates.envioAnulado(envio.sucursal, envio.cantidad_muestras)
+      )
+    }
+  }
 }
 
 export async function updateEnvioComprobante(
@@ -83,6 +113,8 @@ export async function updateEnvioComprobante(
   comprobante_pdf_path: string,
   comprobante_pdf_nombre: string
 ): Promise<void> {
+  const envio = await getEnvioById(id)
+
   const { error } = await supabase
     .from('envios_muestras')
     .update({
@@ -94,4 +126,20 @@ export async function updateEnvioComprobante(
     .eq('id', id)
 
   if (error) throw error
+
+  if (envio) {
+    const fecha = new Date(envio.fecha_envio).toLocaleDateString('es-PE')
+    sendEmail(
+      ADMIN_EMAIL,
+      'Envío recibido, pendiente de revisión - SIGMA',
+      templates.envioRecibido(envio.sucursal, envio.cantidad_muestras, fecha)
+    )
+    if (envio.asesor_email) {
+      sendEmail(
+        envio.asesor_email,
+        'Tu envío fue enviado - SIGMA',
+        templates.envioEnviado(envio.sucursal, envio.cantidad_muestras)
+      )
+    }
+  }
 }

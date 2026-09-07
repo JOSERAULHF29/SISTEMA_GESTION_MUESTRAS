@@ -8,3 +8,5 @@ export const ALLOWED_EXTENSIONS = ['.xlsx']
 export const MAX_FILE_SIZE_MB = 10
 
 export const WAREHOUSE_EMAIL_PATTERN = /^almacen.*@ipesa\.com\.pe$/
+
+export const RESEND_FUNCTION_URL = 'https://limvvebxkvhibuobmpkx.supabase.co/functions/v1/resend-email'
